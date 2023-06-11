@@ -1,3 +1,5 @@
+using webapi.Interfaces;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -7,8 +9,15 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Configuration.AddJsonFile("appsettings.json",
+        optional: false,
+        reloadOnChange: true);
+
 // Add HttpClient services.
 builder.Services.AddHttpClient();
+
+// Add your ApiSelector service.
+builder.Services.AddScoped<IApiSelector, ApiSelector>();
 
 // Add CORS services.
 builder.Services.AddCors(options =>

@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using System.Text;
 using System.Text.Json;
 using System.Xml.Linq;
+using webapi.Interfaces;
 
 
 namespace webapi.Controllers
@@ -13,13 +14,13 @@ namespace webapi.Controllers
     {
         private readonly ILogger<StableDiffusionController> _sd;
         private readonly IHttpClientFactory _clientFactory;
-        private readonly IConfiguration _configuration;
+        private readonly IApiSelector _apiSelector;
 
-        public StableDiffusionController(IHttpClientFactory clientFactory, IConfiguration configuration, ILogger<StableDiffusionController> sd)
+        public StableDiffusionController(IHttpClientFactory clientFactory, ILogger<StableDiffusionController> sd, IApiSelector apiSelector)
         {
             _sd = sd;
             _clientFactory = clientFactory;
-            _configuration = configuration;
+            _apiSelector = apiSelector;
         }
 
         // POST: api/StableDiffusion/txt2img
@@ -29,7 +30,7 @@ namespace webapi.Controllers
         {
             var client = _clientFactory.CreateClient();
             client.Timeout = TimeSpan.FromMinutes(5); // set the timeout to 5 minutes
-            string API_IP = _configuration.GetValue<string>("API_IP");
+            string API_IP = _apiSelector.ChooseApi("txt2img");
 
             var content = new StringContent(data.ToString(), Encoding.UTF8, "application/json");
 
@@ -44,20 +45,28 @@ namespace webapi.Controllers
             return BadRequest();
         }
 
-
-        private object ProcessResponse(string response)
+        // POST: api/StableDiffusion/img2img
+        [HttpPost]
+        [Route("img2img")]
+        public async Task<IActionResult> Img2Img([FromBody] JsonElement data)
         {
-            // Process the response data
-            // This is where you'd implement the watermarking logic
+            var client = _clientFactory.CreateClient();
+            client.Timeout = TimeSpan.FromMinutes(5); // set the timeout to 5 minutes
+            string API_IP = _apiSelector.ChooseApi("img2img");
 
-            // Create a new object with some properties
-            var product = new { property1 = "value1", property2 = "value2" };
 
-            // You don't necessarily need to serialize the object here, 
-            // because the Ok() method will do it for you
-            return product;
+            var content = new StringContent(data.ToString(), Encoding.UTF8, "application/json");
+
+            HttpResponseMessage response = await client.PostAsync($"{API_IP}api/generate/img2img", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var responseData = await response.Content.ReadAsStringAsync();
+                return Ok(responseData);
+            }
+
+            return BadRequest();
         }
-
     }
 
 }
